@@ -390,4 +390,4 @@ MIT License — see [LICENSE](./LICENSE) for details.
 
 ---
 
-<p align="center">Built by <a href="https://github.com/nihal-710">nihal-710</a></p>
+
