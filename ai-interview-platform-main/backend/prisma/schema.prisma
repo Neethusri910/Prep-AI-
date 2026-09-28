@@ -1,0 +1,182 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────
+// USER
+// ─────────────────────────────────────────
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessions InterviewSession[]
+  resumes  Resume[]
+  results  Result[]  
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────
+// INTERVIEW SESSION
+// One session = one full interview attempt
+// ─────────────────────────────────────────
+model InterviewSession {
+  id            String        @id @default(cuid())
+  userId        String
+  type          InterviewType
+  targetRole    String
+  status        SessionStatus @default(IN_PROGRESS)
+  overallScore  Int?
+  durationSecs  Int?
+  totalQuestions Int          @default(0)
+  answeredCount  Int          @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  completedAt   DateTime?
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questions Question[]
+  feedback  Feedback?
+  result    Result? 
+
+  @@map("interview_sessions")
+}
+
+// ─────────────────────────────────────────
+// QUESTION
+// AI-generated question inside a session
+// ─────────────────────────────────────────
+model Question {
+  id         String   @id @default(cuid())
+  sessionId  String
+  content    String
+  orderIndex Int
+  category   String?
+  difficulty String?  @default("medium")
+  createdAt  DateTime @default(now())
+
+  session  InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  response Response?
+
+  @@map("questions")
+}
+
+// ─────────────────────────────────────────
+// RESPONSE
+// User's answer to a specific question
+// ─────────────────────────────────────────
+model Response {
+  id          String   @id @default(cuid())
+  questionId  String   @unique
+  answer      String
+  score       Int?
+  aiFeedback  String?
+  timeTaken   Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@map("responses")
+}
+
+// ─────────────────────────────────────────
+// FEEDBACK
+// AI-generated overall session feedback
+// ─────────────────────────────────────────
+model Feedback {
+  id           String   @id @default(cuid())
+  sessionId    String   @unique
+  strengths    String[]
+  improvements String[]
+  summary      String
+  createdAt    DateTime @default(now())
+
+  session InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("feedback")
+}
+
+// ─────────────────────────────────────────
+// RESULT
+// Evaluated output of a completed session
+// AI scoring replaces placeholder later
+// ─────────────────────────────────────────
+model Result {
+  id                String   @id @default(cuid())
+  sessionId         String   @unique
+  userId            String
+  overallScore      Int
+  completionScore   Int
+  answerLengthScore Int
+  keywordScore      Int
+  questionScores    Json
+  strengthAreas     String[]
+  improvementAreas  String[]
+  sessionSummary    String
+  totalQuestions    Int
+  answeredQuestions Int
+  totalTimeSecs     Int?
+  scoringVersion    String   @default("v1-placeholder")
+  behavioralAnalytics Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  session InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User             @relation(fields: [userId],    references: [id], onDelete: Cascade)
+
+  @@map("results")
+}
+
+// ─────────────────────────────────────────
+// RESUME
+// ─────────────────────────────────────────
+model Resume {
+  id              String   @id @default(cuid())
+  userId          String
+  fileName        String
+  filePath        String
+  extractedText   String?
+  targetRole      String?
+  resumeScore     Int?
+  matchedSkills   String[]
+  missingSkills   String[]
+  focusAreas      String[]
+  recommendations String[]
+  uploadedAt      DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("resumes")
+}
+
+// ─────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────
+enum Role {
+  USER
+  ADMIN
+}
+
+enum InterviewType {
+  BEHAVIORAL
+  TECHNICAL
+  SYSTEM_DESIGN
+  CASE_STUDY
+}
+
+enum SessionStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
